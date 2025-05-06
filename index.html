@@ -196,12 +196,37 @@
       if (e.key === "ArrowUp"    && py > 0) newY--;
 
       const nextKey = `${newX},${newY}`;
+      
       if (!blocked.has(nextKey)) {
         px = newX;
         py = newY;
         player.style.left = px * 30 + "px";
         player.style.top  = py * 30 + "px";
         updateVisibility();
+      } else {
+        let foundExit = false;
+        const directions = [
+          {dx: 1, dy: 0}, {dx: -1, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: -1}
+        ];
+        
+        for (let dir of directions) {
+          const testX = px + dir.dx;
+          const testY = py + dir.dy;
+          const testKey = `${testX},${testY}`;
+          
+          if (testX >= 0 && testX < 10 && testY >= 0 && testY < 10 && !blocked.has(testKey)) {
+            px = testX;
+            py = testY;
+            foundExit = true;
+            break;
+          }
+        }
+
+        if (foundExit) {
+          player.style.left = px * 30 + "px";
+          player.style.top  = py * 30 + "px";
+          updateVisibility();
+        }
       }
 
       for (let i = eggs.length - 1; i >= 0; i--) {
@@ -222,4 +247,3 @@
   </script>
 </body>
 </html>
-
