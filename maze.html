@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maze</title>
+  <style>
+    #game {
+      position: relative;
+      width: 300px;
+      height: 300px;
+      display: grid;
+      grid-template-columns: repeat(10, 30px);
+      grid-template-rows: repeat(10, 30px);
+      background-color: #ccc;
+      margin-bottom: 10px;
+    }
+    .cell {
+      width: 30px;
+      height: 30px;
+      box-sizing: border-box;
+      border: 1px solid #bbb;
+    }
+    #player {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background:
+      content: '🕵🏻‍♂️';
+  font-size: 24px;
+      z-index: 2;
+    }
+    .egg {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background:
+      content: '🧩';
+  font-size: 24px;
+      z-index: 1;
+      transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+    }
+    .egg.hide {
+      opacity: 0;
+      transform: scale(0);
+    }
+    .tree {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: url('https://em-content.zobj.net/thumbs/120/apple/354/deciduous-tree_1f333.png') no-repeat center center / cover;
+      z-index: 1;
+    }
+    #message {
+      font-size: 20px;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="player"></div>
+  </div>
+  <div id="message"></div>
+
+  <script>
+    const game = document.getElementById("game");
+    for (let i = 0; i < 100; i++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      game.appendChild(cell);
+    }
+
+    const gridSize = 10;
+    const targetLetters = ['y','o','u',' ','a','r','e',' ','c','u','t','e'];
+    let collectedCount = 0;
+    const eggs = [];
+    const trees = [];
+    const used = new Set();
+
+    let grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
+
+    const startX = 0, startY = 0;
+
+    function isReachable() {
+      let visited = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
+      let queue = [[startX, startY]];
+      visited[startY][startX] = true;
+
+      while (queue.length) {
+        const [x, y] = queue.shift();
+        [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx, dy]) => {
+          const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize && !visited[ny][nx] && grid[ny][nx] !== 1) {
+            visited[ny][nx] = true;
+            queue.push([nx, ny]);
+          }
+        });
+      }
+
+      return targetLetters.every(letter => {
+        return eggs.some(e => visited[e.dataset.y][e.dataset.x]);
+      });
+    }
+
+    function placeItemRandomly(itemType, count) {
+      let items = [];
+      while (items.length < count) {
+        let x = Math.floor(Math.random() * gridSize);
+        let y = Math.floor(Math.random() * gridSize);
+        let key = `${x},${y}`;
+        if (!used.has(key) && (x !== startX || y !== startY)) {
+          used.add(key);
+          grid[y][x] = itemType === 'tree' ? 1 : 0;
+
+          if (itemType === 'egg') {
+            const egg = document.createElement("div");
+            egg.className = "egg";
+            egg.dataset.x = x;
+            egg.dataset.y = y;
+            egg.dataset.letter = targetLetters[items.length];
+            egg.style.left = x * 30 + "px";
+            egg.style.top = y * 30 + "px";
+            game.appendChild(egg);
+            items.push(egg);
+          } else if (itemType === 'tree') {
+            const tree = document.createElement("div");
+            tree.className = "tree";
+            tree.style.left = x * 30 + "px";
+            tree.style.top = y * 30 + "px";
+            game.appendChild(tree);
+            items.push(tree);
+          }
+        }
+      }
+      return items;
+    }
+
+    let validPlacement = false;
+    while (!validPlacement) {
+      used.clear();
+      game.querySelectorAll(".egg, .tree").forEach(el => el.remove());
+      grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
+      trees.length = 0;
+      eggs.length = 0;
+
+      placeItemRandomly('tree', 15);
+      const placedEggs = placeItemRandomly('egg', targetLetters.length);
+      if (placedEggs.length === targetLetters.length) {
+        eggs.push(...placedEggs);
+        validPlacement = true;
+      }
+    }
+
+    const player = document.getElementById("player");
+    let px = startX, py = startY;
+    player.style.left = px * 30 + "px";
+    player.style.top = py * 30 + "px";
+
+    document.addEventListener("keydown", e => {
+      let nx = px, ny = py;
+      if (e.key === "ArrowRight") nx++;
+      if (e.key === "ArrowLeft") nx--;
+      if (e.key === "ArrowDown") ny++;
+      if (e.key === "ArrowUp") ny--;
+      if (nx < 0 || nx >= gridSize || ny < 0 || ny >= gridSize) return;
+      if (grid[ny][nx] === 1) return;
+
+      px = nx;
+      py = ny;
+      player.style.left = px * 30 + "px";
+      player.style.top  = py * 30 + "px";
+
+      for (let i = eggs.length - 1; i >= 0; i--) {
+        const egg = eggs[i];
+        if (+egg.dataset.x === px && +egg.dataset.y === py) {
+          eggs.splice(i, 1);
+          egg.classList.add("hide");
+          egg.addEventListener("transitionend", () => egg.remove());
+          collectedCount++;
+          if (collectedCount === targetLetters.length) {
+            document.getElementById("message").innerText = targetLetters.join("") + " 💘";
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
