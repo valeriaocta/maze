@@ -20,12 +20,17 @@
       height: 30px;
       box-sizing: border-box;
       border: 1px solid #bbb;
+      background-color: #000;
+      transition: background-color 0.2s;
+    }
+    .cell.visible {
+      background-color: #ccc;
     }
     #player {
       position: absolute;
       width: 30px;
       height: 30px;
-      z-index: 2;
+      z-index: 3;
     }
     .egg, .tree {
       position: absolute;
@@ -34,7 +39,12 @@
       text-align: center;
       line-height: 30px;
       font-weight: bold;
-      z-index: 1;
+      z-index: 2;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+    }
+    .visible-obj {
+      opacity: 1;
     }
     .egg.hide {
       opacity: 0;
@@ -57,20 +67,29 @@
       font-size: 20px;
       font-family: sans-serif;
     }
+    #counter {
+      font-size: 18px;
+      font-family: sans-serif;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
   <div id="game">
     <div id="player"></div>
   </div>
+  <div id="counter">0/13</div>
   <div id="message"></div>
 
   <script>
     const game = document.getElementById("game");
+    const cells = [];
+
     for (let i = 0; i < 100; i++) {
       const cell = document.createElement("div");
       cell.className = "cell";
       game.appendChild(cell);
+      cells.push(cell);
     }
 
     const player = document.getElementById("player");
@@ -84,6 +103,7 @@
     const targetLetters = ['y','o','u',' ','a','r','e',' ','c','u','t','e'];
     let collectedCount = 0;
     const eggs = [];
+    document.getElementById("counter").textContent = `0/${targetLetters.length}`;
 
     for (let i = 0; i < targetLetters.length; i++) {
       const egg = document.createElement("div");
@@ -106,7 +126,8 @@
       eggs.push(egg);
     }
 
-    const treeCount = 10;
+    const trees = [];
+    const treeCount = 20;
     const blocked = new Set();
 
     for (let i = 0; i < treeCount; i++) {
@@ -121,10 +142,49 @@
 
       const tree = document.createElement("div");
       tree.className = "tree";
+      tree.dataset.x = x;
+      tree.dataset.y = y;
       tree.style.left = x * 30 + "px";
       tree.style.top = y * 30 + "px";
       game.appendChild(tree);
+      trees.push(tree);
     }
+
+    function updateVisibility() {
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          const index = y * 10 + x;
+          const cell = cells[index];
+          if (Math.abs(x - px) <= 1 && Math.abs(y - py) <= 1) {
+            cell.classList.add("visible");
+          } else {
+            cell.classList.remove("visible");
+          }
+        }
+      }
+
+      eggs.forEach(egg => {
+        const ex = +egg.dataset.x;
+        const ey = +egg.dataset.y;
+        if (Math.abs(ex - px) <= 1 && Math.abs(ey - py) <= 1) {
+          egg.classList.add("visible-obj");
+        } else {
+          egg.classList.remove("visible-obj");
+        }
+      });
+
+      trees.forEach(tree => {
+        const tx = +tree.dataset.x;
+        const ty = +tree.dataset.y;
+        if (Math.abs(tx - px) <= 1 && Math.abs(ty - py) <= 1) {
+          tree.classList.add("visible-obj");
+        } else {
+          tree.classList.remove("visible-obj");
+        }
+      });
+    }
+
+    updateVisibility();
 
     document.addEventListener("keydown", e => {
       let newX = px;
@@ -141,6 +201,7 @@
         py = newY;
         player.style.left = px * 30 + "px";
         player.style.top  = py * 30 + "px";
+        updateVisibility();
       }
 
       for (let i = eggs.length - 1; i >= 0; i--) {
@@ -150,8 +211,10 @@
           egg.classList.add("hide");
           egg.addEventListener("transitionend", () => egg.remove());
           collectedCount++;
+          document.getElementById("counter").textContent = `${collectedCount}/${targetLetters.length}`;
           if (collectedCount === targetLetters.length) {
             document.getElementById("message").innerText = targetLetters.join("") + " 💘";
+            document.getElementById("counter").style.display = "none";
           }
         }
       }
@@ -159,3 +222,4 @@
   </script>
 </body>
 </html>
+
